@@ -1,0 +1,82 @@
+﻿@page
+@model Application_Security_Practical_Assignment.Pages.Account.LoginModel
+@inject IConfiguration Configuration
+@{
+    ViewData["Title"] = "Login";
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-6 col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h2 class="mb-1">Login</h2>
+                    <p class="text-muted mb-4">Sign in to your Bookworms Online account.</p>
+
+                    <form method="post" novalidate>
+                        @Html.AntiForgeryToken()
+
+                        <input type="hidden" asp-for="RecaptchaToken" id="RecaptchaToken" />
+
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="Input.Email" class="form-label"></label>
+                            <input asp-for="Input.Email" class="form-control" autocomplete="email" placeholder="e.g., alex.tan@gmail.com" />
+                            <span asp-validation-for="Input.Email" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Input.Password" class="form-label"></label>
+                            <input asp-for="Input.Password" class="form-control" autocomplete="current-password" />
+                            <span asp-validation-for="Input.Password" class="text-danger small"></span>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input asp-for="Input.RememberMe" class="form-check-input" />
+                            <label asp-for="Input.RememberMe" class="form-check-label">Remember me</label>
+                        </div>
+
+                       
+
+                        @if (!User.Identity!.IsAuthenticated)
+                        {
+                            <div class="mb-3 text-end">
+                                <a asp-page="/Account/ForgotPassword" class="small">
+                                    Forgot your password?
+                                </a>
+                            </div>
+                        }
+
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">Login</button>
+                            <a class="btn btn-outline-secondary" asp-page="/Account/Register">Register</a>
+                        </div>
+                    </form>
+
+                    <hr class="my-4" />
+
+                    <p class="text-muted small mb-0">
+                        Note: After 3 failed login attempts, the account will be locked for 5 minutes.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script src="https://www.google.com/recaptcha/api.js?render=@Configuration["Recaptcha:SiteKey"]"></script>
+    <script>
+        grecaptcha.ready(function () {
+            grecaptcha.execute('@Configuration["Recaptcha:SiteKey"]', { action: 'login' })
+                .then(function (token) {
+                    document.getElementById('RecaptchaToken').value = token;
+                });
+        });
+    </script>
+}
+

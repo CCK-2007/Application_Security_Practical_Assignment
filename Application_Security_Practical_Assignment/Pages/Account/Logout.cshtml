@@ -1,0 +1,27 @@
+﻿@page
+@model Application_Security_Practical_Assignment.Pages.Account.LogoutModel
+@{
+    ViewData["Title"] = "Logout";
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-6 col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h2 class="mb-2">Logout</h2>
+                    <p class="text-muted">Are you sure you want to log out?</p>
+
+                    <form method="post">
+                        @Html.AntiForgeryToken()
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger btn-lg">Yes, Logout</button>
+                            <a class="btn btn-outline-secondary" asp-page="/Index">Cancel</a>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

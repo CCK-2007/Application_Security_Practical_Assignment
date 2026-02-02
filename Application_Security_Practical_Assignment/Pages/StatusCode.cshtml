@@ -1,0 +1,32 @@
+﻿@page
+@model Application_Security_Practical_Assignment.Pages.StatusCodeModel
+@{
+    ViewData["Title"] = "Page not available";
+}
+
+<div class="container py-5">
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            @if (Model.Code == 404)
+            {
+                <h2 class="mb-2">404 — Page not found</h2>
+                <p class="text-muted">The page you’re looking for doesn’t exist or has been moved.</p>
+            }
+            else if (Model.Code == 403)
+            {
+                <h2 class="mb-2">403 — Access denied</h2>
+                <p class="text-muted">You don’t have permission to view this page.</p>
+            }
+            else
+            {
+                <h2 class="mb-2">@Model.Code — Request cannot be processed</h2>
+                <p class="text-muted">Please try again later.</p>
+            }
+
+            <div class="d-flex gap-2 mt-4">
+                <a class="btn btn-primary" asp-page="/Index">Go Home</a>
+                <a class="btn btn-outline-secondary" asp-page="/Account/Login">Login</a>
+            </div>
+        </div>
+    </div>
+</div>

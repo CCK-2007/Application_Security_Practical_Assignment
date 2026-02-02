@@ -1,0 +1,90 @@
+﻿@page
+@model Application_Security_Practical_Assignment.Pages.IndexModel
+@{
+    ViewData["Title"] = "Home";
+}
+
+<div class="container py-4">
+
+    @* Optional banner message *@
+    @if (!string.IsNullOrWhiteSpace(Model.BannerMessage))
+    {
+        <div class="alert alert-warning" role="alert">
+            @Model.BannerMessage
+        </div>
+    }
+
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div>
+                    <h2 class="mb-1">Welcome, @Model.FirstName @Model.LastName</h2>
+                    <p class="text-muted mb-0">Bookworms Online Membership Portal</p>
+                </div>
+
+                <span class="badge bg-success">Logged In</span>
+            </div>
+
+            <hr class="my-4" />
+
+            <div class="row g-4">
+                <!-- Photo -->
+                <div class="col-12 col-md-4">
+                    <div class="border rounded p-3 text-center bg-light">
+                        @if (!string.IsNullOrWhiteSpace(Model.PhotoUrl))
+                        {
+                            <img src="@Model.PhotoUrl" class="img-fluid rounded" alt="Profile Photo" />
+                            <div class="text-muted small mt-2">Profile photo</div>
+                        }
+                        else
+                        {
+                            <div class="text-muted">No photo uploaded.</div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Details -->
+                <div class="col-12 col-md-8">
+                    <h5 class="mb-3">Member Information</h5>
+
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Email</dt>
+                        <dd class="col-sm-8">@Model.Email</dd>
+
+                        <dt class="col-sm-4">Mobile No</dt>
+                        <dd class="col-sm-8">@Model.MobileNo</dd>
+
+                        <dt class="col-sm-4">Billing Address</dt>
+                        <dd class="col-sm-8">@Model.BillingAddress</dd>
+
+                        <dt class="col-sm-4">Shipping Address</dt>
+                        <dd class="col-sm-8">@Model.ShippingAddress</dd>
+
+                        <dt class="col-sm-4">Credit Card</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge bg-secondary">@Model.MaskedCard</span>
+                            <div class="text-muted small mt-1">
+                                (Displayed as masked; decrypted server-side for display only.)
+                            </div>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+
+            <hr class="my-4" />
+
+            <div class="d-flex gap-2 flex-wrap">
+                <a class="btn btn-outline-primary" asp-page="/Privacy">Privacy</a>
+                <!-- Change Password Button -->
+                <a class="btn btn-outline-warning" asp-page="/Account/ChangePassword">
+                    Change Password
+                </a>
+                <a class="btn btn-danger" asp-page="/Account/Logout">Logout</a>
+            </div>
+        </div>
+    </div>
+
+    <p class="text-center text-muted small mt-3 mb-0">
+        © 2026 Bookworms Online — Membership Service
+    </p>
+</div>
