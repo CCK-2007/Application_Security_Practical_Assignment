@@ -1,11 +1,10 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Text;
 using Application_Security_Practical_Assignment.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using System.Text;
 using Microsoft.AspNetCore.WebUtilities;
-
 
 namespace Application_Security_Practical_Assignment.Pages.Account
 {
@@ -14,15 +13,20 @@ namespace Application_Security_Practical_Assignment.Pages.Account
         private readonly UserManager<IdentityUser> _userManager;
         private readonly IEmailSender _email;
         private readonly IAuditLogger _audit;
+        private readonly string _publicBaseUrl;
 
         public ForgotPasswordModel(
             UserManager<IdentityUser> userManager,
             IEmailSender email,
-            IAuditLogger audit)
+            IAuditLogger audit,
+            IConfiguration config)
         {
             _userManager = userManager;
             _email = email;
             _audit = audit;
+
+            _publicBaseUrl = config["App:PublicBaseUrl"]
+                ?? throw new InvalidOperationException("Missing App:PublicBaseUrl in configuration.");
         }
 
         [BindProperty]
@@ -37,7 +41,6 @@ namespace Application_Security_Practical_Assignment.Pages.Account
 
             var user = await _userManager.FindByEmailAsync(Email.Trim().ToLower());
 
-            // IMPORTANT: do NOT reveal whether email exists
             if (user == null)
             {
                 await _audit.LogAsync("RESET_REQUEST", null, "email_not_found");
@@ -45,17 +48,21 @@ namespace Application_Security_Practical_Assignment.Pages.Account
             }
 
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-
-            // encode token for URL
             var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
 
-            var link = Url.Page(
+            // 1) Generate RELATIVE path only (does not use request host)
+            var relative = Url.Page(
                 "/Account/ResetPassword",
                 pageHandler: null,
-                values: new { email = user.Email, token = encodedToken },
-                protocol: "https"   // force HTTPS, instead of Request.Scheme
+                values: new { email = user.Email, token = encodedToken }
             );
 
+            if (string.IsNullOrWhiteSpace(relative))
+                throw new InvalidOperationException("Failed to generate reset password URL.");
+
+            // 2) Combine with trusted base URL (prevents Host header injection)
+            var baseUri = new Uri(_publicBaseUrl.TrimEnd('/') + "/");
+            var link = new Uri(baseUri, relative.TrimStart('/')).ToString();
 
             await _email.SendAsync(
                 user.Email!,
