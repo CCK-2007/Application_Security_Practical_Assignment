@@ -53,7 +53,7 @@ namespace Application_Security_Practical_Assignment.Pages.Account
                 "/Account/ResetPassword",
                 pageHandler: null,
                 values: new { email = user.Email, token = encodedToken },
-                protocol: Request.Scheme
+                protocol: "https"   // force HTTPS, instead of Request.Scheme
             );
 
 

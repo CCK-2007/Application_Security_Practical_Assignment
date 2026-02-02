@@ -84,21 +84,44 @@ namespace Application_Security_Practical_Assignment.Services
             if (!CryptographicOperations.FixedTimeEquals(tag, expected))
                 throw new CryptographicException("Invalid HMAC.");
 
-            // payload = IV(16) + ciphertext
-            var iv = new byte[16];
-            Buffer.BlockCopy(payload, 0, iv, 0, 16);
-            var cipherBytes = new byte[payloadLen - 16];
-            Buffer.BlockCopy(payload, 16, cipherBytes, 0, cipherBytes.Length);
-
+            // Create AES instance
             using var aes = Aes.Create();
+
+            // Use AES-256 key derived from configuration
             aes.Key = _aesKey;
-            aes.IV = iv;
+
+            // Use CBC mode with PKCS7 padding
             aes.Mode = CipherMode.CBC;
             aes.Padding = PaddingMode.PKCS7;
 
+            // Determine IV length dynamically from AES block size (recommended practice)
+            // AES block size is 128 bits = 16 bytes
+            int ivLen = aes.BlockSize / 8;
+
+            // payload = IV + ciphertext
+            // Ensure payload is long enough to contain at least the IV
+            if (payloadLen < ivLen)
+                throw new CryptographicException("Invalid payload length.");
+
+            // Extract IV from the beginning of payload
+            var iv = new byte[ivLen];
+            Buffer.BlockCopy(payload, 0, iv, 0, ivLen);
+
+            // Extract ciphertext (remaining bytes after IV)
+            var cipherBytes = new byte[payloadLen - ivLen];
+            Buffer.BlockCopy(payload, ivLen, cipherBytes, 0, cipherBytes.Length);
+
+            // Assign extracted IV to AES instance
+            aes.IV = iv;
+
+            // Decrypt ciphertext using AES-CBC
             using var dec = aes.CreateDecryptor();
             var plain = dec.TransformFinalBlock(cipherBytes, 0, cipherBytes.Length);
+
+            // Return decrypted plaintext as UTF-8 string
             return Encoding.UTF8.GetString(plain);
+
+
         }
     }
 }
