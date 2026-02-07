@@ -84,8 +84,8 @@ namespace Application_Security_Practical_Assignment.Pages.Account
 
                 var profile = await _db.MemberProfiles.FirstOrDefaultAsync(p => p.UserId == user.Id);
 
-                // ✅ password expiry enforcement (same logic as your Login)
-                var maxAge = TimeSpan.FromMinutes(5); // demo
+                // ✅ password expiry enforcement
+                var maxAge = TimeSpan.FromMinutes(10); // demo
                 if (profile != null)
                 {
                     profile.CurrentSessionToken = sessionToken;

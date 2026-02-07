@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Text.RegularExpressions;
 using Application_Security_Practical_Assignment.Data;
 using Application_Security_Practical_Assignment.Services;
 using Microsoft.AspNetCore.Identity;
@@ -16,6 +17,20 @@ namespace Application_Security_Practical_Assignment.Pages.Account
         private readonly ApplicationDbContext _db;
         private readonly IPasswordPolicyService _policy;
         private readonly IAuditLogger _audit;
+
+        // Mirror Register policy
+        private static readonly Regex PW_RE =
+            new(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$", RegexOptions.Compiled);
+
+        private static readonly Regex STRICT_EMAIL_RE =
+            new(@"^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$", RegexOptions.Compiled);
+
+        private static bool IsValidStrictEmail(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email)) return false;
+            if (email.Length > 256) return false;
+            return STRICT_EMAIL_RE.IsMatch(email);
+        }
 
         public ChangePasswordModel(
             UserManager<IdentityUser> userManager,
@@ -46,11 +61,6 @@ namespace Application_Security_Practical_Assignment.Pages.Account
 
             [Required]
             [DataType(DataType.Password)]
-            [StringLength(100, MinimumLength = 12, ErrorMessage = "Password must be at least 12 characters.")]
-            [RegularExpression(
-                @"^.*(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).*$",
-                ErrorMessage = "Password must include uppercase, lowercase, number, and symbol."
-            )]
             public string NewPassword { get; set; } = "";
 
             [Required]
@@ -64,14 +74,11 @@ namespace Application_Security_Practical_Assignment.Pages.Account
         public void OnGet(string? reason = null, string? email = null)
         {
             Reason = reason;
-
-            // : Clear any old success TempData that might leak into this page
-            // (Success message should only be shown on Login page after redirect)
             TempData.Remove("Msg");
 
             if (Reason == "expired")
             {
-                Input.Email = (email ?? "").Trim().ToLowerInvariant();
+                Input.Email = NormalizeEmail(email);
             }
         }
 
@@ -79,16 +86,55 @@ namespace Application_Security_Practical_Assignment.Pages.Account
         {
             Reason = reason;
 
+            // 1) DataAnnotations
             if (!ModelState.IsValid)
                 return Page();
 
-            IdentityUser? user = null;
+            // 2) Normalize what matters
             var isSignedIn = User?.Identity?.IsAuthenticated == true;
-
-            // Determine flow for audit / redirect decisions
             var flow = (!isSignedIn && Reason == "expired")
                 ? "expired_prelogin"
                 : "normal_signed_in";
+
+            var email = NormalizeEmail(Input.Email);
+            var current = Input.CurrentPassword ?? "";
+            var newPw = Input.NewPassword ?? "";
+            var confirm = Input.ConfirmPassword ?? "";
+
+            // 3) Explicit backend validation (mirror Register)
+            if (!isSignedIn && Reason == "expired")
+            {
+                if (!IsValidStrictEmail(email))
+                {
+                    // IMPORTANT: must match asp-validation-for="Input.Email"
+                    ModelState.AddModelError("Input.Email", "Please enter a valid email address (e.g., name@example.com).");
+                }
+                else
+                {
+                    Input.Email = email; // keep normalized
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(current))
+                // IMPORTANT: must match asp-validation-for="Input.CurrentPassword"
+                ModelState.AddModelError("Input.CurrentPassword", "Current password is required.");
+
+            if (string.IsNullOrWhiteSpace(newPw) || !PW_RE.IsMatch(newPw))
+                // IMPORTANT: must match asp-validation-for="Input.NewPassword"
+                ModelState.AddModelError("Input.NewPassword",
+                    "Password must be 12+ chars and include upper/lowercase, number, and symbol.");
+
+            if (!string.Equals(newPw, confirm, StringComparison.Ordinal))
+                // IMPORTANT: must match asp-validation-for="Input.ConfirmPassword"
+                ModelState.AddModelError("Input.ConfirmPassword", "Passwords do not match.");
+
+            if (!ModelState.IsValid)
+            {
+                await _audit.LogAsync("CHANGE_PASSWORD_VALIDATION_FAIL", null, $"flow:{flow}; email:{email}");
+                return Page();
+            }
+
+            IdentityUser? user = null;
 
             // ===== Identify user =====
             if (isSignedIn)
@@ -97,13 +143,6 @@ namespace Application_Security_Practical_Assignment.Pages.Account
             }
             else if (Reason == "expired")
             {
-                var email = (Input.Email ?? "").Trim().ToLowerInvariant();
-                if (string.IsNullOrWhiteSpace(email))
-                {
-                    ModelState.AddModelError(string.Empty, "Missing email. Please log in again.");
-                    return Page();
-                }
-
                 user = await _userManager.FindByEmailAsync(email);
             }
 
@@ -131,7 +170,7 @@ namespace Application_Security_Practical_Assignment.Pages.Account
             }
 
             // ===== Password reuse check =====
-            if (await _policy.IsPasswordReusedAsync(user, Input.NewPassword))
+            if (await _policy.IsPasswordReusedAsync(user, newPw))
             {
                 await _audit.LogAsync("CHANGE_PASSWORD_FAIL", user.Id, $"flow:{flow}; reason:password_reuse");
                 ModelState.AddModelError(string.Empty, "You cannot reuse your last 2 passwords.");
@@ -139,20 +178,30 @@ namespace Application_Security_Practical_Assignment.Pages.Account
             }
 
             // ===== Verify current password =====
-            var currentOk = await _userManager.CheckPasswordAsync(user, Input.CurrentPassword);
+            var currentOk = await _userManager.CheckPasswordAsync(user, current);
             if (!currentOk)
             {
                 await _audit.LogAsync("CHANGE_PASSWORD_FAIL", user.Id, $"flow:{flow}; reason:invalid_current_password");
+
+                // Show error under CurrentPassword field
+                ModelState.AddModelError("Input.CurrentPassword", "Current password is incorrect.");
                 ModelState.AddModelError(string.Empty, "Current password is incorrect.");
                 return Page();
             }
 
             // ===== Change password =====
-            var result = await _userManager.ChangePasswordAsync(user, Input.CurrentPassword, Input.NewPassword);
+            var result = await _userManager.ChangePasswordAsync(user, current, newPw);
             if (!result.Succeeded)
             {
                 foreach (var e in result.Errors)
-                    ModelState.AddModelError(string.Empty, e.Description);
+                {
+                    // Most common case: password policy errors -> show under NewPassword
+                    if (e.Code.Contains("Password", StringComparison.OrdinalIgnoreCase))
+                        ModelState.AddModelError("Input.NewPassword", e.Description);
+
+                    else
+                        ModelState.AddModelError(string.Empty, e.Description);
+                }
 
                 await _audit.LogAsync("CHANGE_PASSWORD_FAIL", user.Id, $"flow:{flow}; reason:identity_error");
                 return Page();
@@ -167,23 +216,21 @@ namespace Application_Security_Practical_Assignment.Pages.Account
 
             await _audit.LogAsync("PASSWORD_CHANGED", user.Id, $"flow:{flow}; msg:user_changed_password_success");
 
-            // IMPORTANT: Decide redirect based on flow
             if (isSignedIn)
             {
-                // Keep the user logged in after changing password
                 await _signInManager.RefreshSignInAsync(user);
                 TempData["Msg"] = "Password updated successfully.";
                 return RedirectToPage("/Index", new { msg = "PasswordChanged" });
             }
             else
             {
-                // Expired pre-login flow: force a fresh login + 2FA
                 TempData["Msg"] = "Password updated. Please log in again.";
-                await _signInManager.SignOutAsync(); // safe even if not signed in
+                await _signInManager.SignOutAsync();
                 return RedirectToPage("/Account/Login");
             }
         }
 
-
+        private static string NormalizeEmail(string? email)
+            => (email ?? "").Trim().ToLowerInvariant();
     }
 }

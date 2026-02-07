@@ -1,0 +1,32 @@
+﻿@page
+@model Application_Security_Practical_Assignment.Pages.Account.ConfirmEmailModel
+@{
+    ViewData["Title"] = "Confirm Email";
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h2 class="mb-3">Email Confirmation</h2>
+
+                    @if (!string.IsNullOrWhiteSpace(Model.Message))
+                    {
+                        <div class="alert alert-info">@Model.Message</div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-warning">
+                            Invalid confirmation link.
+                        </div>
+                    }
+
+                    <a class="btn btn-primary w-100" asp-page="/Account/Login">Go to Login</a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>

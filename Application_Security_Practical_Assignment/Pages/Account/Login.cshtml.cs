@@ -93,6 +93,7 @@ namespace Application_Security_Practical_Assignment.Pages.Account
                 return Page();
             }
 
+            // ✅ Step 0: Ensure email is confirmed and verified in user's email
             if (!user.EmailConfirmed)
             {
                 await _audit.LogAsync("LOGIN_FAIL", user.Id, "email_not_confirmed");
