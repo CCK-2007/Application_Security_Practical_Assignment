@@ -156,7 +156,7 @@ namespace Application_Security_Practical_Assignment.Pages.Account
                 return RedirectToPage("/Account/Login");
 
             // ===== Minimum password age =====
-            var minAge = TimeSpan.FromMinutes(5);
+            var minAge = TimeSpan.FromMinutes(1);
             var timeSinceLast = DateTime.UtcNow - profile.LastPasswordChangedUtc;
 
             if (timeSinceLast < minAge)

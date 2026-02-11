@@ -28,6 +28,13 @@
                         </div>
                     }
 
+                    @if (TempData["Banner"] != null)
+                    {
+                        <div class="alert alert-warning">
+                            @TempData["Banner"]
+                        </div>
+                    }
+
                     <form method="post" novalidate>
                         @Html.AntiForgeryToken()
 

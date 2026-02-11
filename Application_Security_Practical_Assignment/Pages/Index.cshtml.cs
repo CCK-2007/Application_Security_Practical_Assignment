@@ -31,8 +31,6 @@ namespace Application_Security_Practical_Assignment.Pages
             _audit = audit;
         }
 
-        public string? BannerMessage { get; set; }
-
         public string FirstName { get; set; } = "";
         public string LastName { get; set; } = "";
         public string Email { get; set; } = "";
@@ -42,23 +40,20 @@ namespace Application_Security_Practical_Assignment.Pages
         public string MaskedCard { get; set; } = "";
         public string? PhotoUrl { get; set; }
 
-        public async Task<IActionResult> OnGetAsync(string? msg = null)
+        public async Task<IActionResult> OnGetAsync()
         {
-            BannerMessage = msg switch
-            {
-                "SessionExpired" => "Your session has expired. Please login again.",
-                "MultipleLoginDetected" => "Your account was logged in from another device/browser. Please login again.",
-                _ => null
-            };
-
+            // ===== SESSION TIMEOUT CHECK =====
             var sessionUserId = HttpContext.Session.GetString("UserId");
             if (string.IsNullOrEmpty(sessionUserId))
             {
                 await _audit.LogAsync("SESSION_EXPIRED", null, "session_timeout");
                 await ForceLogoutAsync();
-                return RedirectToPage("/Account/Login", new { msg = "SessionExpired" });
+
+                TempData["Banner"] = "Your session has expired. Please login again.";
+                return RedirectToPage("/Account/Login");
             }
 
+            // ===== GET CURRENT USER =====
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
             {
@@ -74,16 +69,21 @@ namespace Application_Security_Practical_Assignment.Pages
             if (profile == null)
                 return Page();
 
+            // ===== MULTIPLE LOGIN DETECTION =====
             var sessionToken = HttpContext.Session.GetString("SessionToken");
+
             if (!string.IsNullOrEmpty(profile.CurrentSessionToken) &&
                 !string.IsNullOrEmpty(sessionToken) &&
                 profile.CurrentSessionToken != sessionToken)
             {
                 await _audit.LogAsync("MULTIPLE_LOGIN_DETECTED", user.Id, "session_token_mismatch");
                 await ForceLogoutAsync();
-                return RedirectToPage("/Account/Login", new { msg = "MultipleLoginDetected" });
+
+                TempData["Banner"] = "Your account was logged in from another device/browser. Please login again.";
+                return RedirectToPage("/Account/Login");
             }
 
+            // ===== LOAD USER DATA =====
             FirstName = profile.FirstName;
             LastName = profile.LastName;
             MobileNo = profile.MobileNo;

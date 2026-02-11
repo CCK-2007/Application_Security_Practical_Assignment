@@ -334,7 +334,7 @@ namespace Application_Security_Practical_Assignment.Pages.Account
         {
             value ??= "";
             value = value.Trim();
-            value = Regex.Replace(value, @"\s+", " ");
+            value = Regex.Replace(value, @"s+", " ");
             return value;
         }
 

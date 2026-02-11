@@ -1,8 +1,9 @@
 using Application_Security_Practical_Assignment.Data;
 using Application_Security_Practical_Assignment.Services;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -32,7 +33,7 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options =>
     options.Password.RequireNonAlphanumeric = true;
 
     options.Lockout.MaxFailedAccessAttempts = 3;
-    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(1);
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
@@ -40,7 +41,7 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options =>
 // Session
 builder.Services.AddSession(options =>
 {
-    options.IdleTimeout = TimeSpan.FromMinutes(10);
+    options.IdleTimeout = TimeSpan.FromMinutes(1);
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
 });
@@ -108,17 +109,17 @@ app.Use(async (context, next) =>
     }
 });
 
-//app.UseExceptionHandler("/Error");
-//if (!app.Environment.IsDevelopment())
-//{
-//    app.UseHsts();
-//}
-
+app.UseExceptionHandler("/Error");
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Error");
     app.UseHsts();
 }
+
+//if (!app.Environment.IsDevelopment())
+//{
+//    app.UseExceptionHandler("/Error");
+//    app.UseHsts();
+//}
 
 app.UseHttpsRedirection();
 
@@ -161,6 +162,27 @@ app.UseStaticFiles();
 app.UseRouting();
 
 app.UseSession();
+
+// Session Timeout Middleware, after session timeout, sign out user and redirect to login page
+app.Use(async (context, next) =>
+{
+    // Only check authenticated users
+    if (context.User.Identity?.IsAuthenticated == true)
+    {
+        var sessionUser = context.Session.GetString("UserId");
+
+        // Session expired but cookie still valid
+        if (string.IsNullOrEmpty(sessionUser))
+        {
+            await context.SignOutAsync(IdentityConstants.ApplicationScheme);
+
+            context.Response.Redirect("/Account/Login?timeout=true");
+            return;
+        }
+    }
+
+    await next();
+});
 
 app.UseAuthentication();   // required for Identity
 app.UseAuthorization();

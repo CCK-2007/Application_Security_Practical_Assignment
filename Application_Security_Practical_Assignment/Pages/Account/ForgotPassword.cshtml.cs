@@ -83,7 +83,8 @@ namespace Application_Security_Practical_Assignment.Pages.Account
             var relative = Url.Page(
                 "/Account/ResetPassword",
                 pageHandler: null,
-                values: new { email = user.Email, token = encodedToken }
+                values: new { email = user.Email, token = encodedToken },
+                protocol: "https" // use HTTPS to send email link 
             );
 
             if (string.IsNullOrWhiteSpace(relative))

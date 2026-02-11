@@ -6,13 +6,6 @@
 
 <div class="container py-4">
 
-    @* Optional banner message *@
-    @if (!string.IsNullOrWhiteSpace(Model.BannerMessage))
-    {
-        <div class="alert alert-warning" role="alert">
-            @Model.BannerMessage
-        </div>
-    }
 
     @if (TempData["Msg"] != null)
     {

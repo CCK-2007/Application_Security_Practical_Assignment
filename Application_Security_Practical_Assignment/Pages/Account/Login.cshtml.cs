@@ -58,13 +58,17 @@ namespace Application_Security_Practical_Assignment.Pages.Account
             public bool RememberMe { get; set; } = false;
         }
 
-        public IActionResult OnGet()
+        public IActionResult OnGet(bool? timeout = null)
         {
+            if (timeout == true)
+                ModelState.AddModelError(string.Empty, "Your session has expired. Please log in again.");
+
             if (User.Identity?.IsAuthenticated == true)
                 return RedirectToPage("/Index");
 
             return Page();
         }
+
 
         public async Task<IActionResult> OnPostAsync()
         {
