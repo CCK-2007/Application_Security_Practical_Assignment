@@ -144,7 +144,7 @@ namespace Application_Security_Practical_Assignment.Pages.Account
                 .AsNoTracking()
                 .FirstOrDefaultAsync(p => p.UserId == user.Id);
 
-            var maxAge = TimeSpan.FromMinutes(1);
+            var maxAge = TimeSpan.FromMinutes(10);
 
             if (profile != null && DateTime.UtcNow - profile.LastPasswordChangedUtc > maxAge)
             {
